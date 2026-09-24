@@ -119,7 +119,7 @@ WS 端点接受任意路径的升级请求，对接地址为 `ws://<IP>:8080/`�
 
 ### 3.2 客户端对接
 
-对接流程（构建请求结构体 → 签名 → 通过 WS 发送 → 接收结果）见 [README.md](README.md)「如何对接」一节。签名需要两个 TOKEN：
+控制协议的完整细节（请求结构、签名算法、矩阵清单、响应格式）见 [API.md](API.md)。对接流程概要（构建请求结构体 → 签名 → 通过 WS 发送 → 接收结果）见 [README.md](README.md)「如何对接」一节。签名需要两个 TOKEN：
 
 - **启动TOKEN**：部署时通过 `-token` / `TOKEN` 设置；
 - **编译TOKEN**：构建镜像时通过 GitHub Secret `BUILDTOKEN` 注入（未设置则使用占位值 `miaospeed|docker`）。若你的客户端需要校验编译TOKEN，请在仓库 Settings → Secrets and variables → Actions 中创建 `BUILDTOKEN`（多段用 `|` 分隔），重新触发构建后使用相同值对接。

@@ -38,6 +38,8 @@ docker run -d --name miaospeed --restart unless-stopped \
 
 ### 对接方法
 
+完整的 WebSocket 控制协议（请求结构、签名算法、矩阵清单、响应格式）见 [API.md](API.md)。
+
 由于 _miaoko_ 是闭源软件/服务，如果您想在其他服务内对接 miaospeed，可能没有现成的案例。但是，您依然可以参考如下思路:
 
 0. miaospeed 对接本质是通过 ws 通道发送指令、传递信息。一般来说，您只需要连接 ws，构建请求结构体，签名请求，接收结果即可。
