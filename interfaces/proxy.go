@@ -16,12 +16,48 @@ const (
 	Vless    ProxyType = "Vless"
 	Hysteria ProxyType = "Hysteria"
 
+	Hysteria2   ProxyType = "Hysteria2"
+	WireGuard   ProxyType = "WireGuard"
+	Tuic        ProxyType = "Tuic"
+	Ssh         ProxyType = "Ssh"
+	Mieru       ProxyType = "Mieru"
+	AnyTLS      ProxyType = "AnyTLS"
+	Sudoku      ProxyType = "Sudoku"
+	Masque      ProxyType = "Masque"
+	TrustTunnel ProxyType = "TrustTunnel"
+	ShadowQuic  ProxyType = "ShadowQuic"
+	OpenVPN     ProxyType = "OpenVPN"
+	Tailscale   ProxyType = "Tailscale"
+	ZeroTier    ProxyType = "ZeroTier"
+	EasyTier    ProxyType = "EasyTier"
+	GostRelay   ProxyType = "GostRelay"
+	Nowhere     ProxyType = "Nowhere"
+
+	Direct      ProxyType = "Direct"
+	Reject      ProxyType = "Reject"
+	RejectDrop  ProxyType = "RejectDrop"
+	Compatible  ProxyType = "Compatible"
+	Pass        ProxyType = "Pass"
+	PassRule    ProxyType = "PassRule"
+	Rematch     ProxyType = "Rematch"
+	Dns         ProxyType = "Dns"
+	Relay       ProxyType = "Relay"
+	Selector    ProxyType = "Selector"
+	Fallback    ProxyType = "Fallback"
+	URLTest     ProxyType = "URLTest"
+	LoadBalance ProxyType = "LoadBalance"
+
 	ProxyInvalid ProxyType = "Invalid"
 )
 
 var AllProxyTypes = []ProxyType{
 	Shadowsocks, ShadowsocksR, Snell, Socks5, Http, Vmess, Trojan,
 	Vless, Hysteria,
+	Hysteria2, WireGuard, Tuic, Ssh, Mieru, AnyTLS, Sudoku, Masque,
+	TrustTunnel, ShadowQuic, OpenVPN, Tailscale, ZeroTier, EasyTier,
+	GostRelay, Nowhere,
+	Direct, Reject, RejectDrop, Compatible, Pass, PassRule, Rematch, Dns,
+	Relay, Selector, Fallback, URLTest, LoadBalance,
 }
 
 func Valid(proxyType ProxyType) bool {

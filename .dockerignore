@@ -1,0 +1,11 @@
+.git
+.github
+dist
+temp.png
+*.tgz
+*.mmdb
+test.yaml
+config.yaml
+.history.yaml
+Dockerfile
+docker-compose*.yml

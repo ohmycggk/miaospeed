@@ -19,6 +19,8 @@ config.yaml
 */embeded/*
 !*/embeded/.gitkeep
 !*/embeded/predefined.js
+!*/embeded/default_geoip.js
+!*/embeded/default_ip.js
 
 # intermediates
 emojis
