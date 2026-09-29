@@ -26,6 +26,13 @@ const (
 	Sudoku      ProxyType = "Sudoku"
 	Masque      ProxyType = "Masque"
 	TrustTunnel ProxyType = "TrustTunnel"
+	ShadowQuic  ProxyType = "ShadowQuic"
+	OpenVPN     ProxyType = "OpenVPN"
+	Tailscale   ProxyType = "Tailscale"
+	ZeroTier    ProxyType = "ZeroTier"
+	EasyTier    ProxyType = "EasyTier"
+	GostRelay   ProxyType = "GostRelay"
+	Nowhere     ProxyType = "Nowhere"
 
 	ProxyInvalid ProxyType = "Invalid"
 )
@@ -33,6 +40,7 @@ const (
 var AllProxyTypes = []ProxyType{
 	Shadowsocks, ShadowsocksR, Snell, Socks5, Http, Vmess, Trojan,
 	Vless, Hysteria, Hysteria2, TUIC, Wireguard, SSH, Mieru, AnyTLS, Sudoku, Masque, TrustTunnel,
+	ShadowQuic, OpenVPN, Tailscale, ZeroTier, EasyTier, GostRelay, Nowhere,
 }
 
 func (pt *ProxyType) Equal(other ProxyType) bool {

@@ -9,7 +9,7 @@ echo "平台: ${ARCH}"
 BITS=$(getconf LONG_BIT)
 
 # 获取最新的标签名称
-LATEST_TAG=$(curl -s https://api.github.com/repos/AirportR/miaospeed/releases/latest | grep 'tag_name' | cut -d '"' -f 4)
+LATEST_TAG=$(curl -s https://api.github.com/repos/ohmycggk/miaospeed/releases/latest | grep 'tag_name' | cut -d '"' -f 4)
 
 if [ "$ARCH" = "x86_64" ] && [ "$BITS" = "64" ]; then
   echo "架构: linux/amd64"
@@ -25,7 +25,7 @@ elif [ "$ARCH" = "x86_64" ] && [ "$BITS" = "32" ]; then
   ARCH="linux-386"
 fi
 
-curl -L "https://github.com/AirportR/miaospeed/releases/download/$LATEST_TAG/miaospeed-$ARCH-$LATEST_TAG.tar.gz" -o "/opt/miaospeed.tar.gz"
+curl -L "https://github.com/ohmycggk/miaospeed/releases/download/$LATEST_TAG/miaospeed-$ARCH-$LATEST_TAG.tar.gz" -o "/opt/miaospeed.tar.gz"
 tar -xzf /opt/miaospeed.tar.gz -C /opt/
 mv /opt/miaospeed-$ARCH /opt/miaospeed
 chmod +x /opt/miaospeed

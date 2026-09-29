@@ -111,3 +111,83 @@ udp: true
 		t.Fatalf("expected proxy type %s, got %s", interfaces.TrustTunnel, proxyInfo.Type)
 	}
 }
+
+func TestClashBuild_Nowhere(t *testing.T) {
+	vendor := buildClashVendor("nowhere", `
+name: nowhere
+type: nowhere
+server: example.com
+port: 2077
+password: secret
+udp: true
+`)
+
+	if vendor.Status() != interfaces.VStatusOperational {
+		t.Fatalf("expected status %v, got %v", interfaces.VStatusOperational, vendor.Status())
+	}
+
+	proxyInfo := vendor.ProxyInfo()
+	if proxyInfo.Name != "nowhere" {
+		t.Fatalf("expected proxy name nowhere, got %s", proxyInfo.Name)
+	}
+	if proxyInfo.Type != interfaces.Nowhere {
+		t.Fatalf("expected proxy type %s, got %s", interfaces.Nowhere, proxyInfo.Type)
+	}
+}
+
+func TestClashBuild_NowhereMissingPassword(t *testing.T) {
+	vendor := buildClashVendor("nowhere-bad", `
+name: nowhere-bad
+type: nowhere
+server: example.com
+port: 2077
+`)
+
+	if vendor.Status() != interfaces.VStatusNotReady {
+		t.Fatalf("expected status %v, got %v", interfaces.VStatusNotReady, vendor.Status())
+	}
+}
+
+func TestClashBuild_GostRelay(t *testing.T) {
+	vendor := buildClashVendor("gost-relay", `
+name: gost-relay
+type: gost-relay
+server: example.com
+port: 443
+`)
+
+	if vendor.Status() != interfaces.VStatusOperational {
+		t.Fatalf("expected status %v, got %v", interfaces.VStatusOperational, vendor.Status())
+	}
+
+	proxyInfo := vendor.ProxyInfo()
+	if proxyInfo.Name != "gost-relay" {
+		t.Fatalf("expected proxy name gost-relay, got %s", proxyInfo.Name)
+	}
+	if proxyInfo.Type != interfaces.GostRelay {
+		t.Fatalf("expected proxy type %s, got %s", interfaces.GostRelay, proxyInfo.Type)
+	}
+}
+
+func TestClashBuild_ShadowQuic(t *testing.T) {
+	vendor := buildClashVendor("shadowquic", `
+name: shadowquic
+type: shadowquic
+server: example.com
+port: 443
+username: user
+password: secret
+`)
+
+	if vendor.Status() != interfaces.VStatusOperational {
+		t.Fatalf("expected status %v, got %v", interfaces.VStatusOperational, vendor.Status())
+	}
+
+	proxyInfo := vendor.ProxyInfo()
+	if proxyInfo.Name != "shadowquic" {
+		t.Fatalf("expected proxy name shadowquic, got %s", proxyInfo.Name)
+	}
+	if proxyInfo.Type != interfaces.ShadowQuic {
+		t.Fatalf("expected proxy type %s, got %s", interfaces.ShadowQuic, proxyInfo.Type)
+	}
+}

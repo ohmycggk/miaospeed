@@ -1,4 +1,4 @@
-package tests
+package clash
 
 import (
 	"encoding/base64"
@@ -6,7 +6,6 @@ import (
 	"net"
 	"testing"
 
-	"github.com/airportr/miaospeed/vendors/clash"
 	mdns "github.com/miekg/dns"
 )
 
@@ -76,7 +75,7 @@ func TestApplyMihomoDNSForProxyServer_RewriteServerAndPreserveDomain(t *testing.
 		"server": "example.com",
 	}
 	token := buildMihomoDNSConfigToken(nameServer)
-	clash.applyMihomoDNSForProxyServer(payload, []string{token})
+	applyMihomoDNSForProxyServer(payload, []string{token})
 
 	if got, _ := payload["server"].(string); got != "198.51.100.42" {
 		t.Fatalf("expected rewritten proxy server IP, got %q", got)
@@ -100,7 +99,7 @@ func TestApplyMihomoDNSForProxyServer_KeepExistingSNI(t *testing.T) {
 		"servername": "preset.servername",
 	}
 	token := buildMihomoDNSConfigToken(nameServer)
-	clash.applyMihomoDNSForProxyServer(payload, []string{token})
+	applyMihomoDNSForProxyServer(payload, []string{token})
 
 	if got, _ := payload["server"].(string); got != "198.51.100.42" {
 		t.Fatalf("expected rewritten proxy server IP, got %q", got)
@@ -118,7 +117,7 @@ func TestApplyMihomoDNSForProxyServer_NoMihomoTokenNoChange(t *testing.T) {
 		"type":   "trojan",
 		"server": "example.com",
 	}
-	clash.applyMihomoDNSForProxyServer(payload, []string{"8.8.8.8", "https://dns.google/dns-query"})
+	applyMihomoDNSForProxyServer(payload, []string{"8.8.8.8", "https://dns.google/dns-query"})
 
 	if got, _ := payload["server"].(string); got != "example.com" {
 		t.Fatalf("expected server unchanged without mihomo token, got %q", got)
