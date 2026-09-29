@@ -6,6 +6,10 @@ on:
     branches:
     - "docker"
 
+permissions:
+  contents: read
+  packages: write
+
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
@@ -25,11 +29,12 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Log in to Docker Hub
+      - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
         with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v4
@@ -38,9 +43,9 @@ jobs:
           file: ./docker/Dockerfile
           push: true
           tags: |
-            ${{ secrets.DOCKERHUB_USERNAME }}/miaospeed:latest
-            ${{ secrets.DOCKERHUB_USERNAME }}/miaospeed:${{ env.MIAOSPEED_TAG }}
+            ghcr.io/${{ github.repository }}:latest
+            ghcr.io/${{ github.repository }}:${{ env.MIAOSPEED_TAG }}
           platforms: linux/386,linux/amd64,linux/arm/v7,linux/arm64/v8
 
-      - name: Logout from Docker Hub
-        run: docker logout
+      - name: Logout from GitHub Container Registry
+        run: docker logout ghcr.io
