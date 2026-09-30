@@ -120,6 +120,12 @@ declare -A MSG_EN=(
     [SERVICE_ENABLED]="Service enabled"
     [INSTALL_SUCCESS]="MiaoSpeed installed successfully!"
     [DOCKER_DEPLOYED]="MiaoSpeed Docker deployed!"
+    [DOCKER_RUNNING]="Container is running."
+    [DOCKER_START_FAILED]="Container failed to start. Recent logs:"
+    [DOCKER_BUILD_FAILED]="Docker image build failed!"
+    [FILE_NOT_FOUND_SKIP]="File not found, skipped:"
+    [PACKING_DOCKER_ARTIFACT]="Packing binary for the Docker build:"
+    [DOCKER_ENV_NOTE]="Note: the binary reads CLI flags only (env vars are ignored), passing them as the container command."
     [UNINSTALL_SUCCESS]="MiaoSpeed uninstalled successfully."
     [CHOOSE_PERSISTENCE]="Choose persistence method:"
     [PERSIST_SYSTEMD]="systemd (system service, requires root)"
@@ -341,6 +347,12 @@ declare -A MSG_ZH=(
     [SERVICE_ENABLED]="服务已启用"
     [INSTALL_SUCCESS]="MiaoSpeed 安装成功!"
     [DOCKER_DEPLOYED]="MiaoSpeed Docker 部署完成!"
+    [DOCKER_RUNNING]="容器已运行。"
+    [DOCKER_START_FAILED]="容器启动失败。最近日志:"
+    [DOCKER_BUILD_FAILED]="Docker 镜像构建失败!"
+    [FILE_NOT_FOUND_SKIP]="文件不存在，已跳过:"
+    [PACKING_DOCKER_ARTIFACT]="正在打包用于 Docker 构建的二进制文件:"
+    [DOCKER_ENV_NOTE]="注意: 二进制只读取命令行参数（环境变量无效），已作为容器命令传入。"
     [UNINSTALL_SUCCESS]="MiaoSpeed 卸载成功。"
     [CHOOSE_PERSISTENCE]="选择持久化方式:"
     [PERSIST_SYSTEMD]="systemd（系统服务，需要 root）"
@@ -1847,6 +1859,76 @@ build_command_args() {
     COMMAND_ARGS=("${args[@]}")
 }
 
+# Translate the local deployment args into a docker run command.
+# The miaospeed binary only reads CLI flags and ignores env vars, so the
+# container must receive the same args as a local deployment, with:
+#   - the listener forced to 0.0.0.0:8080 inside the container (host ports map to it)
+#   - mmdb / cert files read-only bind mounted, with their paths rewritten
+# Sets DOCKER_CMD_ARGS and DOCKER_VOL_ARGS.
+build_docker_command() {
+    build_command_args
+
+    local -a cmd=()
+    local -a vols=()
+    local arg flag newvalue f base n used=" "
+    local pending=false
+    for arg in "${COMMAND_ARGS[@]}"; do
+        if [[ "$pending" == true ]]; then
+            pending=false
+            case "$flag" in
+                -bind)
+                    cmd+=("-bind" "0.0.0.0:8080")
+                    ;;
+                -mmdb|-serverpublickey|-serverprivatekey)
+                    # file list (comma separated) or single file: mount each one
+                    newvalue=""
+                    local IFS=','
+                    for f in $arg; do
+                        [[ -z "$f" ]] && continue
+                        if [[ -f "$f" ]]; then
+                            base="/data/$(basename "$f")"
+                            # keep same-named files from different dirs apart
+                            if [[ "$used" == *" ${base} "* ]]; then
+                                n=2
+                                while [[ "$used" == *" ${base}.${n} "* ]]; do
+                                    n=$((n + 1))
+                                done
+                                base="${base}.${n}"
+                            fi
+                            used+="${base} "
+                            vols+=("-v" "${f}:${base}:ro")
+                            newvalue="${newvalue:+${newvalue},}${base}"
+                        else
+                            log_warn "$(_ FILE_NOT_FOUND_SKIP) $f"
+                        fi
+                    done
+                    unset IFS
+                    [[ -n "$newvalue" ]] && cmd+=("$flag" "$newvalue")
+                    ;;
+                *)
+                    cmd+=("$flag" "$arg")
+                    ;;
+            esac
+            continue
+        fi
+        case "$arg" in
+            -nospeed|-ipv6|-mtls|-upload)
+                cmd+=("$arg")
+                ;;
+            -*)
+                flag="$arg"
+                pending=true
+                ;;
+            *)
+                cmd+=("$arg")
+                ;;
+        esac
+    done
+
+    DOCKER_CMD_ARGS=("${cmd[@]}")
+    DOCKER_VOL_ARGS=("${vols[@]}")
+}
+
 # Get command args as a string (for compatibility with legacy code)
 get_command_args_string() {
     build_command_args
@@ -2066,6 +2148,9 @@ recreate_service_files() {
         none)
             create_manual_start
             ;;
+        docker)
+            deploy_docker
+            ;;
     esac
 }
 
@@ -2276,26 +2361,14 @@ deploy_docker() {
         config_wizard
     fi
 
-    # Build Docker command arguments
-    local docker_args=""
-    [[ -n "$CFG_TOKEN" ]] && docker_args="$docker_args -e TOKEN=$CFG_TOKEN"
-    [[ -n "$CFG_BIND" ]] && docker_args="$docker_args -e BIND=$CFG_BIND"
-    [[ -n "$CFG_PATH" ]] && docker_args="$docker_args -e PATH=$CFG_PATH"
-    [[ -n "$CFG_ALLOWIP" ]] && docker_args="$docker_args -e ALLOWIP=$CFG_ALLOWIP"
-    [[ -n "$CFG_WHITELIST" ]] && docker_args="$docker_args -e WHITELIST=$CFG_WHITELIST"
-    [[ "$CFG_NOSPEED" == true ]] && docker_args="$docker_args -e NOSPEED=true"
-    [[ "$CFG_IPV6" == true ]] && docker_args="$docker_args -e IPV6=true"
-    [[ "$CFG_MTLS" == true ]] && docker_args="$docker_args -e MTLS=true"
-    [[ "$CFG_UPLOAD" == true ]] && docker_args="$docker_args -e UPLOAD=true"
-    [[ "$CFG_CONTHREAD" != "64" ]] && docker_args="$docker_args -e CONTHREAD=$CFG_CONTHREAD"
-    [[ "$CFG_TASKLIMIT" != "1000" ]] && docker_args="$docker_args -e TASKLIMIT=$CFG_TASKLIMIT"
-    [[ "$CFG_SPEEDLIMIT" != "0" ]] && docker_args="$docker_args -e SPEEDLIMIT=$CFG_SPEEDLIMIT"
-    [[ "$CFG_PAUSESECOND" != "0" ]] && docker_args="$docker_args -e PAUSESECOND=$CFG_PAUSESECOND"
-    [[ -n "$CFG_MMDB" ]] && docker_args="$docker_args -e MMDB=$CFG_MMDB"
-
+    # Host-side port comes from CFG_BIND; the container always listens on 8080
     local port
     port=$(echo "$CFG_BIND" | cut -d: -f2)
     [[ -z "$port" ]] && port="8080"
+
+    # The binary only reads CLI flags, so pass them as the container command
+    log_info "$(_ DOCKER_ENV_NOTE)"
+    build_docker_command
 
     local image="${DOCKER_IMAGE}:latest"
     log_info "$(_ PULLING_DOCKER_IMAGE) $image"
@@ -2311,12 +2384,21 @@ deploy_docker() {
     fi
 
     log_info "$(_ STARTING_CONTAINER)"
-    docker run -d \
+    if ! docker run -d \
         --name "$SERVICE_NAME" \
         --restart unless-stopped \
         -p "$port:8080" \
-        $docker_args \
-        "$image"
+        ${DOCKER_VOL_ARGS[@]+"${DOCKER_VOL_ARGS[@]}"} \
+        "$image" \
+        ${DOCKER_CMD_ARGS[@]+"${DOCKER_CMD_ARGS[@]}"}
+    then
+        log_error "$(_ DOCKER_START_FAILED)"
+        return 1
+    fi
+
+    if ! check_docker_health; then
+        return 1
+    fi
 
     # Save params
     PERSISTENCE_METHOD="docker"
@@ -2327,6 +2409,11 @@ deploy_docker() {
 
 build_docker_image() {
     log_info "$(_ BUILDING_DOCKER_IMAGE)"
+
+    if ! command -v go &>/dev/null; then
+        log_error "$(_ GO_NOT_INSTALLED)"
+        install_go
+    fi
 
     local work_dir="/tmp/miaospeed-docker"
     rm -rf "$work_dir"
@@ -2341,25 +2428,84 @@ build_docker_image() {
         log_error "Failed to change to directory: $work_dir"
         return 1
     }
-    docker build -t "${DOCKER_IMAGE}:latest" .
+
+    prepare_embedded_files
+
+    # The Dockerfile copies a packed release archive from bin/, so build the
+    # linux binary for the host arch and pack it the same way `make` does.
+    local goarch
+    goarch=$(go env GOHOSTARCH 2>/dev/null || echo "amd64")
+    log_info "$(_ PACKING_DOCKER_ARTIFACT) linux/${goarch}"
+    mkdir -p bin
+    CGO_ENABLED=0 GOOS=linux GOARCH="$goarch" go build -trimpath -ldflags='-w -s -buildid=' -o "bin/miaospeed-linux-${goarch}" . || {
+        log_error "$(_ COMPILATION_FAILED)"
+        cd / || true
+        rm -rf "$work_dir"
+        return 1
+    }
+    chmod +x "bin/miaospeed-linux-${goarch}"
+    tar -czf "bin/miaospeed-linux-${goarch}-local.tar.gz" -C bin "miaospeed-linux-${goarch}" -C .. LICENSE
+
+    if ! docker build \
+        -f docker/Dockerfile \
+        --build-arg TARGETARCH="$goarch" \
+        --build-arg TARGETVARIANT="" \
+        --build-arg MIAOSPEED_VERSION="local" \
+        -t "${DOCKER_IMAGE}:latest" .
+    then
+        log_error "$(_ DOCKER_BUILD_FAILED)"
+        cd / || true
+        rm -rf "$work_dir"
+        return 1
+    fi
 
     cd / || return 1
     rm -rf "$work_dir"
+
+    # The binary only reads CLI flags, so pass them as the container command
+    build_docker_command
 
     local port
     port=$(echo "$CFG_BIND" | cut -d: -f2)
     [[ -z "$port" ]] && port="8080"
 
-    docker run -d \
+    if docker ps -a --format '{{.Names}}' | grep -q "^${SERVICE_NAME}$"; then
+        log_info "$(_ REMOVING_CONTAINER)"
+        docker rm -f "$SERVICE_NAME" 2>/dev/null || true
+    fi
+
+    if ! docker run -d \
         --name "$SERVICE_NAME" \
         --restart unless-stopped \
         -p "$port:8080" \
-        -e BIND="$CFG_BIND" \
-        -e TOKEN="$CFG_TOKEN" \
-        -e PATH="$CFG_PATH" \
-        "${DOCKER_IMAGE}:latest"
+        ${DOCKER_VOL_ARGS[@]+"${DOCKER_VOL_ARGS[@]}"} \
+        "${DOCKER_IMAGE}:latest" \
+        ${DOCKER_CMD_ARGS[@]+"${DOCKER_CMD_ARGS[@]}"}
+    then
+        log_error "$(_ DOCKER_START_FAILED)"
+        return 1
+    fi
+
+    check_docker_health || return 1
 
     print_docker_summary "$port"
+}
+
+# Verify the freshly started container stays up. A crash loop (e.g. an invalid
+# mmdb file) would otherwise look healthy for a moment between restarts, so
+# also require that Docker has not restarted the container at all.
+check_docker_health() {
+    sleep 2
+    local state restarts
+    state=$(docker inspect -f '{{.State.Status}}' "$SERVICE_NAME" 2>/dev/null || echo "missing")
+    restarts=$(docker inspect -f '{{.RestartCount}}' "$SERVICE_NAME" 2>/dev/null || echo 1)
+    if [[ "$state" == "running" && "$restarts" == "0" ]]; then
+        log_info "$(_ DOCKER_RUNNING)"
+        return 0
+    fi
+    log_error "$(_ DOCKER_START_FAILED)"
+    docker logs --tail 20 "$SERVICE_NAME" 2>&1 || true
+    return 1
 }
 
 print_docker_summary() {
