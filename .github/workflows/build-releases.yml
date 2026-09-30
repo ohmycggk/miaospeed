@@ -50,7 +50,7 @@ jobs:
         uses: ./.github/actions/docker-publish
         with:
           version: ${{ env.MIAOSPEED_TAG }}
-          username: ${{ secrets.GHCR_USERNAME || github.actor }}
+          username: ${{ secrets.GHCR_USERNAME || github.repository_owner }}
           password: ${{ secrets.GHCR_TOKEN || secrets.GITHUB_TOKEN }}
           tags: |
             ghcr.io/${{ github.repository }}:latest
