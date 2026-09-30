@@ -1,5 +1,7 @@
 #!/bin/sh
 
+set -e
+
 # 获取系统架构信息
 ARCH=$(uname -m)
 
@@ -7,9 +9,6 @@ echo "平台: ${ARCH}"
 
 # 获取系统位数
 BITS=$(getconf LONG_BIT)
-
-# 获取最新的标签名称
-LATEST_TAG=$(curl -s https://api.github.com/repos/ohmycggk/miaospeed/releases/latest | grep 'tag_name' | cut -d '"' -f 4)
 
 if [ "$ARCH" = "x86_64" ] && [ "$BITS" = "64" ]; then
   echo "架构: linux/amd64"
@@ -25,7 +24,22 @@ elif [ "$ARCH" = "x86_64" ] && [ "$BITS" = "32" ]; then
   ARCH="linux-386"
 fi
 
-curl -L "https://github.com/ohmycggk/miaospeed/releases/download/$LATEST_TAG/miaospeed-$ARCH-$LATEST_TAG.tar.gz" -o "/opt/miaospeed.tar.gz"
+# 获取最新的 release 信息
+RELEASE_JSON=$(curl -sf https://api.github.com/repos/ohmycggk/miaospeed/releases/latest)
+LATEST_TAG=$(echo "$RELEASE_JSON" | grep 'tag_name' | head -n 1 | cut -d '"' -f 4)
+echo "最新版本: ${LATEST_TAG}"
+
+# 从 release 的 assets 中解析对应架构的下载地址，避免安装包命名与版本号不一致导致 404
+DOWNLOAD_URL=$(echo "$RELEASE_JSON" | grep '"browser_download_url"' | cut -d '"' -f 4 | grep -E "miaospeed-$ARCH-[^/]*\.tar\.gz$" | grep -v -- "-v3-" | head -n 1)
+
+if [ -z "$DOWNLOAD_URL" ]; then
+  DOWNLOAD_URL="https://github.com/ohmycggk/miaospeed/releases/download/$LATEST_TAG/miaospeed-$ARCH-$LATEST_TAG.tar.gz"
+fi
+
+echo "下载: $DOWNLOAD_URL"
+
+curl -fSL "$DOWNLOAD_URL" -o /opt/miaospeed.tar.gz
+tar -tzf /opt/miaospeed.tar.gz > /dev/null
 tar -xzf /opt/miaospeed.tar.gz -C /opt/
 mv /opt/miaospeed-$ARCH /opt/miaospeed
 chmod +x /opt/miaospeed

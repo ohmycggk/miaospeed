@@ -1,7 +1,7 @@
 NAME=miaospeed
 BINDIR=bin
 MIHOMO_VERSION=$(shell awk '/^replace github.com\/metacubex\/mihomo / {print $$NF; found=1} END {if (!found) exit 1}' go.mod || echo "Unknown")
-VERSION=$(shell git describe --tags --abbrev=0 | head -n 1 || echo "Unknown")
+VERSION=$(shell git describe --tags --abbrev=0 2>/dev/null || echo "Unknown")
 BUILDTIME=$(shell date -u '+%Y-%m-%d_%I:%M:%S%p(UTC%:z)')
 COMMIT=$(shell git rev-parse --short HEAD || echo "Unknown")
 GOBUILD=CGO_ENABLED=0 go build -trimpath -ldflags '-X "main.VERSION=$(VERSION)" \
