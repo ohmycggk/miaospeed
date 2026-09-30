@@ -114,7 +114,7 @@ declare -A MSG_EN=(
     [REASON_NETWORK]="Network error or GitHub is unreachable."
     [REASON_NOT_FOUND]="The requested binary was not found on GitHub releases."
     [SUGGEST_COMPILE]="Please compile from source manually:"
-    [SUGGEST_CHECK]="Please check your network or visit https://github.com/AirportR/miaospeed/releases"
+    [SUGGEST_CHECK]="Please check your network or visit https://github.com/ohmycggk/miaospeed/releases"
     [COMPILATION_COMPLETE]="Compilation complete."
     [COMPILATION_FAILED]="Compilation failed!"
     [SERVICE_ENABLED]="Service enabled"
@@ -335,7 +335,7 @@ declare -A MSG_ZH=(
     [REASON_NETWORK]="网络错误或无法访问 GitHub。"
     [REASON_NOT_FOUND]="在 GitHub 发布页中未找到请求的二进制文件。"
     [SUGGEST_COMPILE]="请手动从源码编译:"
-    [SUGGEST_CHECK]="请检查网络或访问 https://github.com/AirportR/miaospeed/releases"
+    [SUGGEST_CHECK]="请检查网络或访问 https://github.com/ohmycggk/miaospeed/releases"
     [COMPILATION_COMPLETE]="编译完成。"
     [COMPILATION_FAILED]="编译失败!"
     [SERVICE_ENABLED]="服务已启用"
@@ -523,9 +523,10 @@ log_menu() { echo -e "${CYAN}$(_ MENU)${NC} $1"; }
 INSTALL_DIR="$HOME/.miaospeed"
 BINARY_NAME="miaospeed"
 SERVICE_NAME="miaospeed"
-REPO="AirportR/miaospeed"
+REPO="ohmycggk/miaospeed"
 GITHUB_API="https://api.github.com/repos/${REPO}/releases/latest"
 DOWNLOAD_BASE="https://github.com/${REPO}/releases/download"
+DOCKER_IMAGE="ghcr.io/ohmycggk/miaospeed-nw"
 
 # Default configuration - all parameters supported by miaospeed
 CFG_TOKEN=""
@@ -1600,7 +1601,7 @@ show_download_error() {
     echo ""
     echo "$(_ SUGGEST_CHECK)"
     echo ""
-    echo "  git clone https://github.com/AirportR/miaospeed.git"
+    echo "  git clone https://github.com/ohmycggk/miaospeed.git"
     echo "  cd miaospeed"
     echo "  CGO_ENABLED=0 go build -trimpath -ldflags='-w -s -buildid=' -o miaospeed ."
     echo ""
@@ -1622,7 +1623,7 @@ compile_from_source() {
     mkdir -p "$work_dir"
 
     log_info "$(_ CLONING_SOURCE)"
-    git clone --depth 1 https://github.com/AirportR/miaospeed.git "$work_dir" || {
+    git clone --depth 1 https://github.com/ohmycggk/miaospeed.git "$work_dir" || {
         log_error "Failed to clone repository"
         return 1
     }
@@ -2275,16 +2276,6 @@ deploy_docker() {
         config_wizard
     fi
 
-    local version
-    version=$(get_latest_version)
-
-    if [[ -z "$version" ]]; then
-        log_error "Failed to fetch latest version from GitHub API"
-        exit 1
-    fi
-
-    log_info "$(_ LATEST_VERSION) $version"
-
     # Build Docker command arguments
     local docker_args=""
     [[ -n "$CFG_TOKEN" ]] && docker_args="$docker_args -e TOKEN=$CFG_TOKEN"
@@ -2306,14 +2297,12 @@ deploy_docker() {
     port=$(echo "$CFG_BIND" | cut -d: -f2)
     [[ -z "$port" ]] && port="8080"
 
-    log_info "$(_ PULLING_DOCKER_IMAGE) ghcr.io/airportr/miaospeed:$version"
-    if ! docker pull "ghcr.io/airportr/miaospeed:$version" 2>/dev/null; then
-        log_info "$(_ TRYING_DOCKER_HUB)"
-        if ! docker pull "airportr/miaospeed:$version" 2>/dev/null; then
-            log_warn "Pre-built image not found. Building from source..."
-            build_docker_image
-            return 0
-        fi
+    local image="${DOCKER_IMAGE}:latest"
+    log_info "$(_ PULLING_DOCKER_IMAGE) $image"
+    if ! docker pull "$image" 2>/dev/null; then
+        log_warn "Pre-built image not found. Building from source..."
+        build_docker_image
+        return 0
     fi
 
     if docker ps -a --format '{{.Names}}' | grep -q "^${SERVICE_NAME}$"; then
@@ -2327,13 +2316,7 @@ deploy_docker() {
         --restart unless-stopped \
         -p "$port:8080" \
         $docker_args \
-        "airportr/miaospeed:$version" || \
-    docker run -d \
-        --name "$SERVICE_NAME" \
-        --restart unless-stopped \
-        -p "$port:8080" \
-        $docker_args \
-        "ghcr.io/airportr/miaospeed:$version"
+        "$image"
 
     # Save params
     PERSISTENCE_METHOD="docker"
@@ -2349,7 +2332,7 @@ build_docker_image() {
     rm -rf "$work_dir"
     mkdir -p "$work_dir"
 
-    git clone --depth 1 https://github.com/AirportR/miaospeed.git "$work_dir" || {
+    git clone --depth 1 https://github.com/ohmycggk/miaospeed.git "$work_dir" || {
         log_error "Failed to clone repository"
         return 1
     }
@@ -2358,7 +2341,7 @@ build_docker_image() {
         log_error "Failed to change to directory: $work_dir"
         return 1
     }
-    docker build -t miaospeed:latest .
+    docker build -t "${DOCKER_IMAGE}:latest" .
 
     cd / || return 1
     rm -rf "$work_dir"
@@ -2374,7 +2357,7 @@ build_docker_image() {
         -e BIND="$CFG_BIND" \
         -e TOKEN="$CFG_TOKEN" \
         -e PATH="$CFG_PATH" \
-        miaospeed:latest
+        "${DOCKER_IMAGE}:latest"
 
     print_docker_summary "$port"
 }
