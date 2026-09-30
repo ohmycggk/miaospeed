@@ -1,0 +1,28 @@
+name: ghcr access probe
+
+on: workflow_dispatch
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Make throwaway image
+        run: |
+          mkdir ctx && printf 'FROM alpine\n' > ctx/Dockerfile
+          docker build -t probe:test ctx
+
+      - name: Login to ghcr with GITHUB_TOKEN
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Probe pushing a brand-new package
+        run: |
+          docker tag probe:test ghcr.io/ohmycggk/miaospeed-ci-probe:only-delete-me
+          docker push ghcr.io/ohmycggk/miaospeed-ci-probe:only-delete-me && echo "RESULT=NEW_PACKAGE_OK" || echo "RESULT=NEW_PACKAGE_DENIED"
