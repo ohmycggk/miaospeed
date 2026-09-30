@@ -2,13 +2,18 @@ FROM alpine:latest
 
 ENV TZ=Asia/Shanghai
 
-COPY docker/install.sh /tmp
+# TARGETARCH/TARGETVARIANT are injected by buildx (386, amd64, arm+v7, arm64/v8)
+ARG TARGETARCH
+ARG TARGETVARIANT
+ARG MIAOSPEED_VERSION
 
-RUN apk add --no-cache \
-    curl && \
-    ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && \
+COPY bin/miaospeed-linux-${TARGETARCH}${TARGETVARIANT}-${MIAOSPEED_VERSION}.tar.gz /tmp/miaospeed.tar.gz
+
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && \
     echo $TZ > /etc/timezone && \
-    chmod +x /tmp/install.sh && \
-    sh /tmp/install.sh
+    tar -xzf /tmp/miaospeed.tar.gz -C /opt && \
+    mv /opt/miaospeed-linux-* /opt/miaospeed && \
+    chmod +x /opt/miaospeed && \
+    rm /tmp/miaospeed.tar.gz
 
 ENTRYPOINT ["/opt/miaospeed"]

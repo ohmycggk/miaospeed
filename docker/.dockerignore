@@ -1,0 +1,5 @@
+*
+!bin/miaospeed-linux-386-*.tar.gz
+!bin/miaospeed-linux-amd64-*.tar.gz
+!bin/miaospeed-linux-armv7-*.tar.gz
+!bin/miaospeed-linux-arm64-*.tar.gz
