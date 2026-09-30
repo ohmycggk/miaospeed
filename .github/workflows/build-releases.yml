@@ -53,5 +53,5 @@ jobs:
           username: ${{ secrets.GHCR_USERNAME || github.repository_owner }}
           password: ${{ secrets.GHCR_TOKEN || secrets.GITHUB_TOKEN }}
           tags: |
-            ghcr.io/${{ github.repository }}:latest
-            ghcr.io/${{ github.repository }}:${{ env.MIAOSPEED_TAG }}
+            ghcr.io/${{ github.repository_owner }}/miaospeed-nw:latest
+            ghcr.io/${{ github.repository_owner }}/miaospeed-nw:${{ env.MIAOSPEED_TAG }}
